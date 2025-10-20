@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>欧阳宁秀</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 背景图片高斯模糊 */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            filter: blur(80px);
+            transform: scale(1.1);
+            z-index: -2;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: -1;
+        }
+
+        /* 通话屏幕 */
+        .call-screen {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 80px 40px 60px;
+        }
+
+        /* 头像区域 */
+        .avatar-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-size: cover;
+            background-position: center;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 4px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar.pulse {
+            animation: avatarPulse 2s infinite;
+        }
+
+        @keyframes avatarPulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 20px 80px rgba(102, 126, 234, 0.8);
+            }
+        }
+
+        .caller-name {
+            font-size: 42px;
+            font-weight: 200;
+            color: #ffffff;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .call-status {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 300;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 控制按钮区域 */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 80px;
+            padding: 20px 0;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            position: relative;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: inherit;
+            filter: blur(20px);
+            opacity: 0.6;
+            z-index: -1;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-call {
+            background: #34c759;
+            font-size: 36px;
+        }
+
+        .btn-call:hover:not(:disabled) {
+            background: #30b350;
+            transform: scale(1.05);
+        }
+
+        .btn-end {
+            background: #ff3b30;
+            font-size: 36px;
+        }
+
+        .btn-end:hover:not(:disabled) {
+            background: #e6342a;
+            transform: scale(1.05);
+        }
+
+        /* 对话记录隐藏 */
+        .transcript {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 通话屏幕 -->
+    <div class="call-screen">
+        <!-- 头像区域 -->
+        <div class="avatar-section">
+            <div id="avatar" class="avatar">
+                <span style="font-size: 52px; font-weight: 300; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">宁秀</span>
+            </div>
+            <div class="caller-name">欧阳宁秀</div>
+            <div id="callStatus" class="call-status">点击接听按钮开始对话</div>
+        </div>
+
+        <!-- 对话记录（隐藏，仅用于保存历史） -->
+        <div class="transcript" id="transcript"></div>
+
+        <!-- 控制按钮 -->
+        <div class="controls">
+            <button id="connectBtn" class="control-btn btn-call">
+                ☎
+            </button>
+            <button id="disconnectBtn" class="control-btn btn-end" disabled>
+                ✕
+            </button>
+        </div>
+    </div>
+
+    <audio id="audioElement" autoplay></audio>
+
+    <script>
+        const callStatus = document.getElementById('callStatus');
+        const avatar = document.getElementById('avatar');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const transcriptEl = document.getElementById('transcript');
+        const audioElement = document.getElementById('audioElement');
+
+        let ws = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let audioQueue = [];
+        let isPlaying = false;
+        let nextPlayTime = 0;
+
+        function addMessage(role, text) {
+            const msg = document.createElement('div');
+            msg.className = `message ${role}`;
+            msg.textContent = text;
+            transcriptEl.appendChild(msg);
+            transcriptEl.scrollTop = transcriptEl.scrollHeight;
+        }
+
+        function updateStatus(text, isPulse = false) {
+            callStatus.textContent = text;
+            if (isPulse) {
+                avatar.classList.add('pulse');
+            } else {
+                avatar.classList.remove('pulse');
+            }
+        }
+
+        async function playAudioChunk(base64Audio) {
+            if (!audioContext) return;
+
+            try {
+                // 解码base64音频
+                const binaryString = atob(base64Audio);
+                const bytes = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                }
+
+                // 转换为AudioBuffer (PCM16, 24kHz, mono)
+                const int16Array = new Int16Array(bytes.buffer);
+                const float32Array = new Float32Array(int16Array.length);
+                for (let i = 0; i < int16Array.length; i++) {
+                    float32Array[i] = int16Array[i] / 32768.0;
+                }
+
+                const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+                audioBuffer.getChannelData(0).set(float32Array);
+
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+
+                // 计算正确的播放时间，确保音频块连续播放不重叠
+                const currentTime = audioContext.currentTime;
+                const startTime = Math.max(currentTime, nextPlayTime);
+
+                source.start(startTime);
+
+                // 更新下一个音频块应该开始的时间
+                nextPlayTime = startTime + audioBuffer.duration;
+            } catch (err) {
+                console.error('播放音频失败:', err);
+            }
+        }
+
+        async function connect() {
+            try {
+                connectBtn.disabled = true;
+                updateStatus('正在接通...', false);
+
+                // 获取API密钥
+                const keyResponse = await fetch('/api_key');
+                const keyData = await keyResponse.json();
+                const apiKey = keyData.api_key;
+
+                addMessage('system', '正在连接到OpenAI Realtime API...');
+
+                // 连接WebSocket (按照官方文档格式)
+                ws = new WebSocket(
+                    'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+                    [
+                        'realtime',
+                        'openai-insecure-api-key.' + apiKey,
+                        'openai-beta.realtime-v1'
+                    ]
+                );
+
+                ws.onopen = async () => {
+
+                    // 配置会话
+                    ws.send(JSON.stringify({
+                        type: 'session.update',
+                        session: {
+                            modalities: ['text', 'audio'],
+                            instructions: '你是一个友好的AI语音助手。你可以帮助用户通过语音找到他们需要的网站和信息。当用户询问某个问题或想要查询某些信息时，你应该：1. 理解用户的意图 2. 使用recognize_intent工具来识别最合适的网站 3. 将结果自然地告诉用户，包括推荐的网站URL。请保持对话自然、友好、高效。使用中文与用户交流。',
+                            voice: 'alloy',
+                            input_audio_format: 'pcm16',
+                            output_audio_format: 'pcm16',
+                            input_audio_transcription: {
+                                model: 'whisper-1'
+                            },
+                            turn_detection: {
+                                type: 'server_vad',
+                                threshold: 0.5,
+                                prefix_padding_ms: 300,
+                                silence_duration_ms: 500
+                            },
+                            tools: [
+                                {
+                                    type: 'function',
+                                    name: 'recognize_intent',
+                                    description: '识别用户查询意图并返回最合适的网站URL。当用户询问要查询某些信息、访问某个网站、或寻找某类服务时，使用此工具。',
+                                    parameters: {
+                                        type: 'object',
+                                        properties: {
+                                            query: {
+                                                type: 'string',
+                                                description: '用户的查询文本，例如\'Python教程\'、\'贵州茅台股票\'、\'个人所得税计算\'等'
+                                            },
+                                            top_k: {
+                                                type: 'integer',
+                                                description: '返回top-k个可能的结果，默认3',
+                                                default: 3
+                                            }
+                                        },
+                                        required: ['query']
+                                    }
+                                }
+                            ],
+                            tool_choice: 'auto'
+                        }
+                    }));
+
+                    // 获取麦克风
+                    try {
+                        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                        // 设置音频上下文 (24kHz采样率)
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                        const source = audioContext.createMediaStreamSource(mediaStream);
+                        const processor = audioContext.createScriptProcessor(2048, 1, 1);
+
+                        source.connect(processor);
+                        processor.connect(audioContext.destination);
+
+                        processor.onaudioprocess = (e) => {
+                            if (ws && ws.readyState === WebSocket.OPEN) {
+                                const inputData = e.inputBuffer.getChannelData(0);
+                                const pcm16 = new Int16Array(inputData.length);
+                                for (let i = 0; i < inputData.length; i++) {
+                                    pcm16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                                }
+
+                                // 转为base64并发送
+                                const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+                                ws.send(JSON.stringify({
+                                    type: 'input_audio_buffer.append',
+                                    audio: base64
+                                }));
+                            }
+                        };
+
+                        updateStatus('通话中', true);
+                        disconnectBtn.disabled = false;
+
+                    } catch (err) {
+                        updateStatus('麦克风权限被拒绝', false);
+                        connectBtn.disabled = false;
+                    }
+                };
+
+                ws.onmessage = async (event) => {
+                    const data = JSON.parse(event.data);
+                    console.log('收到事件:', data.type, data);
+
+                    // 处理用户说话转录
+                    if (data.type === 'conversation.item.input_audio_transcription.completed') {
+                        addMessage('user', data.transcript);
+                    }
+
+                    // 处理AI回复转录
+                    if (data.type === 'response.audio_transcript.done') {
+                        addMessage('assistant', data.transcript);
+                    }
+
+                    // 处理AI音频输出
+                    if (data.type === 'response.audio.delta' && data.delta) {
+                        await playAudioChunk(data.delta);
+                    }
+
+                    // 处理函数调用
+                    if (data.type === 'response.function_call_arguments.done') {
+
+                        if (data.name === 'recognize_intent') {
+                            try {
+                                const args = JSON.parse(data.arguments);
+                                const result = await fetch('/recognize_intent', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(args)
+                                });
+                                const resultData = await result.json();
+
+                                // 发送工具结果
+                                ws.send(JSON.stringify({
+                                    type: 'conversation.item.create',
+                                    item: {
+                                        type: 'function_call_output',
+                                        call_id: data.call_id,
+                                        output: JSON.stringify(resultData, null, 2)
+                                    }
+                                }));
+
+                                // 触发响应
+                                ws.send(JSON.stringify({ type: 'response.create' }));
+
+                                // 保存到历史记录
+                                const categories = resultData.predictions?.map(p => p.category).join('、') || 'N/A';
+                                addMessage('system', `推荐: ${categories}`);
+                            } catch (err) {
+                                console.error('工具调用失败:', err);
+                            }
+                        }
+                    }
+
+                    // 处理错误
+                    if (data.type === 'error') {
+                        console.error('服务器错误:', data.error);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket错误:', error);
+                    updateStatus('连接出错', false);
+                };
+
+                ws.onclose = () => {
+                    updateStatus('点击接听按钮开始对话', false);
+                    connectBtn.disabled = false;
+                    disconnectBtn.disabled = true;
+
+                    if (mediaStream) {
+                        mediaStream.getTracks().forEach(track => track.stop());
+                    }
+                    if (audioContext) {
+                        audioContext.close();
+                    }
+                };
+
+            } catch (error) {
+                console.error('连接错误:', error);
+                updateStatus('连接失败', false);
+                connectBtn.disabled = false;
+            }
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            if (audioContext) {
+                audioContext.close();
+                audioContext = null;
+            }
+            // 重置音频播放时间
+            nextPlayTime = 0;
+            updateStatus('点击接听按钮开始对话', false);
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+        }
+
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+    </script>
+</body>
+</html>
