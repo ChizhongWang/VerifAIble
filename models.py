@@ -15,7 +15,7 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=False)
     name = db.Column(db.String(255))
     picture = db.Column(db.String(500))  # Google头像URL
-    openai_api_key = db.Column(db.String(255))  # 加密存储
+    openai_api_key = db.Column(db.String(500))  # 加密存储
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
 

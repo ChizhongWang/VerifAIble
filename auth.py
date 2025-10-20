@@ -138,8 +138,8 @@ def api_key():
         data = request.json
         api_key = data.get('api_key', '')
 
-        if not api_key.startswith('sk-'):
-            return jsonify({'error': 'Invalid API key format'}), 400
+        if not api_key or len(api_key) < 20:
+          return jsonify({'error': 'Invalid API key format'}), 400
 
         # 加密并保存
         user.openai_api_key = encrypt_api_key(api_key)
