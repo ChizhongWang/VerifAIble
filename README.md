@@ -1,6 +1,4 @@
-# UniAgent - AI语音助手
-
-欧阳宁秀AI语音助手 - 基于OpenAI Realtime API的智能语音对话系统，集成意图识别功能。
+# VerifAIble
 
 ## 功能特性
 
