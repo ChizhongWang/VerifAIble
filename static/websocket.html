@@ -214,6 +214,25 @@
     <audio id="audioElement" autoplay></audio>
 
     <script>
+        // ========================================
+        // CONFIGURATION - Easy model switching
+        // ========================================
+        const CONFIG = {
+            // OpenAI Realtime API Model
+            // Options:
+            // - 'gpt-4o-realtime-preview-2024-12-17' (full featured)
+            // - 'gpt-realtime-mini-2025-10-06' (faster, cheaper)
+            model: 'gpt-realtime-mini-2025-10-06',
+
+            // Voice settings
+            voice: 'alloy',  // Options: alloy, echo, fable, onyx, nova, shimmer
+
+            // Turn detection sensitivity (0.0 - 1.0)
+            vadThreshold: 0.5,
+            vadSilenceDuration: 500  // milliseconds
+        };
+        // ========================================
+
         const callStatus = document.getElementById('callStatus');
         const avatar = document.getElementById('avatar');
         const connectBtn = document.getElementById('connectBtn');
@@ -297,7 +316,7 @@
 
                 // 连接WebSocket (按照官方文档格式)
                 ws = new WebSocket(
-                    'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17',
+                    `wss://api.openai.com/v1/realtime?model=${CONFIG.model}`,
                     [
                         'realtime',
                         'openai-insecure-api-key.' + apiKey,
@@ -312,8 +331,8 @@
                         type: 'session.update',
                         session: {
                             modalities: ['text', 'audio'],
-                            instructions: '你是一个友好的AI语音助手。你可以帮助用户通过语音找到他们需要的网站和信息。当用户询问某个问题或想要查询某些信息时，你应该：1. 理解用户的意图 2. 使用recognize_intent工具来识别最合适的网站 3. 将结果自然地告诉用户，包括推荐的网站URL。请保持对话自然、友好、高效。使用中文与用户交流。',
-                            voice: 'alloy',
+                            instructions: 'You are a friendly AI voice assistant. You can help users find the websites and information they need through voice. When users ask questions or want to query information, you should: 1. Understand user intent 2. Use the recognize_intent tool to identify the most suitable website 3. Naturally tell users the results, including recommended website URLs. Keep conversations natural, friendly, and efficient.',
+                            voice: CONFIG.voice,
                             input_audio_format: 'pcm16',
                             output_audio_format: 'pcm16',
                             input_audio_transcription: {
@@ -321,9 +340,9 @@
                             },
                             turn_detection: {
                                 type: 'server_vad',
-                                threshold: 0.5,
+                                threshold: CONFIG.vadThreshold,
                                 prefix_padding_ms: 300,
-                                silence_duration_ms: 500
+                                silence_duration_ms: CONFIG.vadSilenceDuration
                             },
                             tools: [
                                 {
