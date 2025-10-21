@@ -19,6 +19,12 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # 声纹识别相关字段
+    voiceprint_profile = db.Column(db.Text)  # JSON格式存储声纹特征向量
+    call_mode = db.Column(db.String(20))  # 'earpiece' or 'speaker'
+    voiceprint_enabled = db.Column(db.Boolean, default=False)  # 是否启用声纹验证
+    voiceprint_enrolled_at = db.Column(db.DateTime)  # 声纹注册时间
+
     # 关系
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
@@ -29,7 +35,11 @@ class User(db.Model):
             'name': self.name,
             'picture': self.picture,
             'created_at': self.created_at.isoformat(),
-            'has_api_key': bool(self.openai_api_key)
+            'has_api_key': bool(self.openai_api_key),
+            'call_mode': self.call_mode,
+            'voiceprint_enabled': self.voiceprint_enabled,
+            'has_voiceprint': bool(self.voiceprint_profile),
+            'voiceprint_enrolled_at': self.voiceprint_enrolled_at.isoformat() if self.voiceprint_enrolled_at else None
         }
 
 

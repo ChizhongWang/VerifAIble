@@ -246,6 +246,106 @@
             color: white;
             border: 1px solid rgba(255, 149, 0, 0.5);
         }
+
+        /* 声纹管理样式 */
+        .voiceprint-section {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+            margin-bottom: 20px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+
+        .enrollment-text {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .enrollment-text p {
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .recording-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .btn-record {
+            background: rgba(239, 68, 68, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-record:hover:not(:disabled) {
+            background: rgba(239, 68, 68, 1);
+            transform: translateY(-2px);
+        }
+
+        .btn-record.recording {
+            background: rgba(34, 197, 94, 0.8);
+            animation: pulse-rec 1.5s infinite;
+        }
+
+        @keyframes pulse-rec {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+
+        .recording-time {
+            font-size: 24px;
+            font-weight: 700;
+            color: white;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .voiceprint-info {
+            background: rgba(52, 199, 89, 0.2);
+            border: 1px solid rgba(52, 199, 89, 0.4);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .voiceprint-info p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .btn-danger {
+            background: rgba(255, 59, 48, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 59, 48, 0.4);
+        }
+
+        .btn-danger:hover {
+            background: rgba(255, 59, 48, 0.8);
+        }
     </style>
 </head>
 <body>
@@ -280,7 +380,47 @@
             <button class="btn-secondary" onclick="goToChat()">Start Chat</button>
         </div>
 
-        <div class="btn-group" style="margin-top: 15px;">
+        <!-- 声纹管理部分 -->
+        <div class="voiceprint-section">
+            <div class="section-title">
+                🎤 Voice Registration
+                <span class="status-badge inactive" id="voiceprintStatus">Not enrolled</span>
+            </div>
+
+            <div id="voiceprintInfo" class="voiceprint-info" style="display: none;">
+                <p><strong>✓ Voiceprint enrolled</strong></p>
+                <p id="enrolledTime"></p>
+            </div>
+
+            <p class="help-text" style="margin-bottom: 15px;">
+                Register your voice by reading the text below. This helps filter out other voices during calls.
+                You can read both languages or just one - whichever you're comfortable with.
+            </p>
+
+            <div class="enrollment-text">
+                <p><strong>中文段落：</strong><br>
+                我们的宇宙诞生于约一百三十八亿年前。从那一刻起，它就处在持续的膨胀之中，空间本身在不断延伸。星系在彼此远离，就像一个正在被吹大的气球表面的点。这种膨胀是宇宙演化的基本驱动力之一，决定了它的过去与未来。</p>
+
+                <p><strong>English Paragraph:</strong><br>
+                Our universe was born approximately 13.8 billion years ago. Since that moment, it has been in a state of continuous expansion, with space itself stretching. Galaxies are moving away from each other, like points on the surface of a balloon being inflated. This expansion is one of the fundamental drivers of cosmic evolution, defining its past and its future.</p>
+            </div>
+
+            <div class="recording-controls">
+                <button class="btn-record" id="recordBtn" onclick="toggleRecording()">
+                    <span id="recordIcon">⏺️</span>
+                    <span id="recordText">Start Recording</span>
+                </button>
+                <div class="recording-time" id="recordingTime">0:00</div>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-danger" onclick="deleteVoiceprint()" id="deleteVoiceprintBtn" style="display: none;">
+                    Delete Voiceprint
+                </button>
+            </div>
+        </div>
+
+        <div class="btn-group" style="margin-top: 30px;">
             <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
     </div>
@@ -318,6 +458,10 @@
                     statusBadge.className = 'status-badge active';
                     document.getElementById('apiKeyInput').placeholder = 'Saved (enter new key to update)';
                 }
+
+                // 加载声纹信息
+                await loadVoiceprintInfo();
+
             } catch (error) {
                 console.error('加载用户信息失败:', error);
                 showMessage('Failed to load user info', 'error');
@@ -388,6 +532,276 @@
                 window.location.href = '/auth/logout';
             }
         }
+
+        // ========================================
+        // 声纹管理功能
+        // ========================================
+
+        let isRecording = false;
+        let recordingStartTime = null;
+        let recordingTimer = null;
+        let audioContext = null;
+        let mediaStream = null;
+        let analyser = null;
+        let audioData = [];
+
+        async function loadVoiceprintInfo() {
+            try {
+                const response = await fetch('/auth/user/voiceprint');
+                const data = await response.json();
+
+                const statusBadge = document.getElementById('voiceprintStatus');
+                const voiceprintInfo = document.getElementById('voiceprintInfo');
+                const deleteBtn = document.getElementById('deleteVoiceprintBtn');
+
+                if (data.has_voiceprint) {
+                    statusBadge.textContent = 'Enrolled';
+                    statusBadge.className = 'status-badge active';
+
+                    voiceprintInfo.style.display = 'block';
+                    if (data.voiceprint_enrolled_at) {
+                        const enrolledDate = new Date(data.voiceprint_enrolled_at);
+                        document.getElementById('enrolledTime').textContent =
+                            `Registered on: ${enrolledDate.toLocaleString()}`;
+                    }
+
+                    deleteBtn.style.display = 'block';
+                } else {
+                    statusBadge.textContent = 'Not enrolled';
+                    statusBadge.className = 'status-badge inactive';
+                    voiceprintInfo.style.display = 'none';
+                    deleteBtn.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('加载声纹信息失败:', error);
+            }
+        }
+
+        async function toggleRecording() {
+            if (!isRecording) {
+                await startRecording();
+            } else {
+                await stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                // 获取麦克风权限
+                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                // 创建音频上下文
+                audioContext = new AudioContext({ sampleRate: 24000 });
+                const source = audioContext.createMediaStreamSource(mediaStream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+
+                source.connect(analyser);
+
+                // 开始录音
+                isRecording = true;
+                audioData = [];
+                recordingStartTime = Date.now();
+
+                // 更新UI
+                document.getElementById('recordBtn').classList.add('recording');
+                document.getElementById('recordIcon').textContent = '⏹️';
+                document.getElementById('recordText').textContent = 'Stop Recording';
+
+                // 启动定时器
+                recordingTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    document.getElementById('recordingTime').textContent =
+                        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                    // 采集音频数据
+                    const data = new Float32Array(analyser.fftSize);
+                    analyser.getFloatTimeDomainData(data);
+                    audioData.push(...Array.from(data));
+                }, 100);
+
+            } catch (error) {
+                console.error('录音失败:', error);
+                showMessage('Failed to access microphone: ' + error.message, 'error');
+            }
+        }
+
+        async function stopRecording() {
+            if (!isRecording) return;
+
+            // 停止录音
+            isRecording = false;
+            clearInterval(recordingTimer);
+
+            // 停止音频流
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+
+            // 更新UI
+            document.getElementById('recordBtn').classList.remove('recording');
+            document.getElementById('recordIcon').textContent = '⏺️';
+            document.getElementById('recordText').textContent = 'Start Recording';
+
+            // 检查录音时长
+            const recordingDuration = (Date.now() - recordingStartTime) / 1000;
+            if (recordingDuration < 3) {
+                showMessage('Recording too short. Please record at least 3 seconds.', 'error');
+                document.getElementById('recordingTime').textContent = '0:00';
+                return;
+            }
+
+            // 处理录音数据
+            console.log(`录音完成，时长: ${recordingDuration.toFixed(1)}s，采样点: ${audioData.length}`);
+
+            // 提取声纹特征
+            const voiceprintFeatures = extractAudioFeatures(audioData);
+            console.log(`声纹特征提取完成，维度: ${voiceprintFeatures.length}`);
+
+            // 保存声纹
+            await saveVoiceprint(voiceprintFeatures);
+
+            // 重置计时器
+            document.getElementById('recordingTime').textContent = '0:00';
+        }
+
+        // ========================================
+        // 声纹特征提取算法（与websocket.html保持一致）
+        // ========================================
+
+        function extractAudioFeatures(audioData) {
+            const fftSize = 2048;
+            const numMelBands = 40;
+            const features = [];
+
+            for (let i = 0; i < audioData.length - fftSize; i += fftSize / 2) {
+                const chunk = audioData.slice(i, i + fftSize);
+                const spectrum = applyFFT(chunk);
+                const melBands = convertToMelScale(spectrum, numMelBands);
+                features.push(melBands);
+            }
+
+            return averageFeatures(features);
+        }
+
+        function applyFFT(audioChunk) {
+            const spectrum = new Array(audioChunk.length / 2).fill(0);
+
+            for (let k = 0; k < spectrum.length; k++) {
+                let real = 0;
+                let imag = 0;
+
+                for (let n = 0; n < audioChunk.length; n++) {
+                    const angle = -2 * Math.PI * k * n / audioChunk.length;
+                    real += audioChunk[n] * Math.cos(angle);
+                    imag += audioChunk[n] * Math.sin(angle);
+                }
+
+                spectrum[k] = Math.sqrt(real * real + imag * imag);
+            }
+
+            return spectrum;
+        }
+
+        function convertToMelScale(spectrum, numBands) {
+            const melBands = new Array(numBands).fill(0);
+            const bandSize = Math.floor(spectrum.length / numBands);
+
+            for (let i = 0; i < numBands; i++) {
+                const start = i * bandSize;
+                const end = start + bandSize;
+
+                for (let j = start; j < end && j < spectrum.length; j++) {
+                    melBands[i] += spectrum[j];
+                }
+
+                melBands[i] /= bandSize;
+            }
+
+            return melBands;
+        }
+
+        function averageFeatures(featuresList) {
+            if (featuresList.length === 0) return null;
+
+            const numFeatures = featuresList[0].length;
+            const avgFeatures = new Array(numFeatures).fill(0);
+
+            for (const features of featuresList) {
+                for (let i = 0; i < numFeatures; i++) {
+                    avgFeatures[i] += features[i];
+                }
+            }
+
+            for (let i = 0; i < numFeatures; i++) {
+                avgFeatures[i] /= featuresList.length;
+            }
+
+            return avgFeatures;
+        }
+
+        // ========================================
+        // 保存和删除声纹
+        // ========================================
+
+        async function saveVoiceprint(features) {
+            try {
+                const response = await fetch('/auth/user/voiceprint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        voiceprint_profile: JSON.stringify(features),
+                        call_mode: 'speaker',  // 默认设置为speaker模式
+                        voiceprint_enabled: true
+                    })
+                });
+
+                if (response.ok) {
+                    showMessage('Voiceprint saved successfully!', 'success');
+                    await loadVoiceprintInfo();
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error || 'Failed to save voiceprint', 'error');
+                }
+            } catch (error) {
+                console.error('保存声纹失败:', error);
+                showMessage('Save failed: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteVoiceprint() {
+            if (!confirm('Are you sure you want to delete your voiceprint? This action cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/user/voiceprint', {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showMessage('Voiceprint deleted successfully', 'success');
+                    await loadVoiceprintInfo();
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error || 'Failed to delete voiceprint', 'error');
+                }
+            } catch (error) {
+                console.error('删除声纹失败:', error);
+                showMessage('Delete failed: ' + error.message, 'error');
+            }
+        }
+
+        // ========================================
+        // END 声纹管理功能
+        // ========================================
 
         // 页面加载时获取用户信息
         loadUserInfo();

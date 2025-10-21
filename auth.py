@@ -189,3 +189,87 @@ def require_api_key(f):
         return f(*args, **kwargs)
 
     return decorated_function
+
+@auth_bp.route('/user/voiceprint', methods=['GET', 'POST', 'DELETE'])
+def voiceprint():
+    """管理用户声纹数据"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    if request.method == 'GET':
+        # 获取声纹信息
+        return jsonify({
+            'has_voiceprint': bool(user.voiceprint_profile),
+            'voiceprint_profile': user.voiceprint_profile,
+            'call_mode': user.call_mode,
+            'voiceprint_enabled': user.voiceprint_enabled,
+            'voiceprint_enrolled_at': user.voiceprint_enrolled_at.isoformat() if user.voiceprint_enrolled_at else None
+        })
+
+    elif request.method == 'POST':
+        # 保存声纹数据
+        data = request.json
+        voiceprint_profile = data.get('voiceprint_profile')
+        call_mode = data.get('call_mode')
+        voiceprint_enabled = data.get('voiceprint_enabled', False)
+
+        if not voiceprint_profile:
+            return jsonify({'error': 'Invalid voiceprint data'}), 400
+
+        if call_mode not in ['earpiece', 'speaker', None]:
+            return jsonify({'error': 'Invalid call mode'}), 400
+
+        # 保存声纹
+        user.voiceprint_profile = voiceprint_profile
+        user.call_mode = call_mode
+        user.voiceprint_enabled = voiceprint_enabled
+        user.voiceprint_enrolled_at = datetime.utcnow()
+
+        db.session.commit()
+
+        logger.info(f"用户 {user.email} 已注册声纹")
+        return jsonify({
+            'success': True,
+            'message': 'Voiceprint saved successfully',
+            'voiceprint_enrolled_at': user.voiceprint_enrolled_at.isoformat()
+        })
+
+    elif request.method == 'DELETE':
+        # 删除声纹数据
+        user.voiceprint_profile = None
+        user.voiceprint_enabled = False
+        user.voiceprint_enrolled_at = None
+
+        db.session.commit()
+
+        logger.info(f"用户 {user.email} 已删除声纹")
+        return jsonify({'success': True, 'message': 'Voiceprint deleted'})
+
+@auth_bp.route('/user/call-mode', methods=['POST'])
+def update_call_mode():
+    """更新用户通话模式设置"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.json
+    call_mode = data.get('call_mode')
+    voiceprint_enabled = data.get('voiceprint_enabled', False)
+
+    if call_mode not in ['earpiece', 'speaker']:
+        return jsonify({'error': 'Invalid call mode'}), 400
+
+    user.call_mode = call_mode
+    user.voiceprint_enabled = voiceprint_enabled
+
+    db.session.commit()
+
+    logger.info(f"用户 {user.email} 更新通话模式: {call_mode}, 声纹: {voiceprint_enabled}")
+    return jsonify({'success': True, 'message': 'Call mode updated'})
