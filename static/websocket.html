@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>欧阳宁秀</title>
+    <title>VerifAIble</title>
     <style>
         * {
             margin: 0;
@@ -31,7 +31,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
             background-size: cover;
             background-position: center;
             filter: blur(80px);
@@ -73,7 +73,7 @@
             width: 180px;
             height: 180px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
             background-size: cover;
             background-position: center;
             margin-bottom: 30px;
@@ -95,7 +95,7 @@
             }
             50% {
                 transform: scale(1.05);
-                box-shadow: 0 20px 80px rgba(102, 126, 234, 0.8);
+                box-shadow: 0 20px 80px rgba(52, 211, 153, 0.8);
             }
         }
 
@@ -191,10 +191,10 @@
         <!-- 头像区域 -->
         <div class="avatar-section">
             <div id="avatar" class="avatar">
-                <span style="font-size: 52px; font-weight: 300; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">宁秀</span>
+                <span style="font-size: 52px; font-weight: 300; color: white; text-shadow: 0 2px 8px rgba(0,0,0,0.3);">VAI</span>
             </div>
-            <div class="caller-name">欧阳宁秀</div>
-            <div id="callStatus" class="call-status">点击接听按钮开始对话</div>
+            <div class="caller-name">VerifAIble</div>
+            <div id="callStatus" class="call-status">Click to start conversation</div>
         </div>
 
         <!-- 对话记录（隐藏，仅用于保存历史） -->
@@ -286,7 +286,7 @@
         async function connect() {
             try {
                 connectBtn.disabled = true;
-                updateStatus('正在接通...', false);
+                updateStatus('Connecting...', false);
 
                 // 获取API密钥
                 const keyResponse = await fetch('/api_key');
@@ -380,11 +380,11 @@
                             }
                         };
 
-                        updateStatus('通话中', true);
+                        updateStatus('In call', true);
                         disconnectBtn.disabled = false;
 
                     } catch (err) {
-                        updateStatus('麦克风权限被拒绝', false);
+                        updateStatus('Microphone permission denied', false);
                         connectBtn.disabled = false;
                     }
                 };
@@ -451,11 +451,11 @@
 
                 ws.onerror = (error) => {
                     console.error('WebSocket错误:', error);
-                    updateStatus('连接出错', false);
+                    updateStatus('Connection error', false);
                 };
 
                 ws.onclose = () => {
-                    updateStatus('点击接听按钮开始对话', false);
+                    updateStatus('Click to start conversation', false);
                     connectBtn.disabled = false;
                     disconnectBtn.disabled = true;
 
@@ -469,7 +469,7 @@
 
             } catch (error) {
                 console.error('连接错误:', error);
-                updateStatus('连接失败', false);
+                updateStatus('Connection failed', false);
                 connectBtn.disabled = false;
             }
         }
@@ -489,7 +489,7 @@
             }
             // 重置音频播放时间
             nextPlayTime = 0;
-            updateStatus('点击接听按钮开始对话', false);
+            updateStatus('Click to start conversation', false);
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
         }

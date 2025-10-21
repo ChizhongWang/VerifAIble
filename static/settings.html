@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>设置 - 欧阳宁秀</title>
+    <title>Settings - VerifAIble</title>
     <style>
         * {
             margin: 0;
@@ -30,7 +30,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #34d399 0%, #059669 100%);
             filter: blur(80px);
             transform: scale(1.1);
             z-index: -2;
@@ -251,37 +251,37 @@
 <body>
     <div class="settings-container">
         <div class="header">
-            <h1>账户设置</h1>
+            <h1>Account Settings</h1>
         </div>
 
         <div class="status-message" id="statusMessage"></div>
 
         <div class="user-info" id="userInfo">
             <div class="user-details">
-                <div class="user-name">加载中...</div>
+                <div class="user-name">Loading...</div>
                 <div class="user-email"></div>
             </div>
         </div>
 
         <div class="form-group">
             <label>
-                OpenAI API 密钥
-                <span class="status-badge inactive" id="apiKeyStatus">未配置</span>
+                OpenAI API Key
+                <span class="status-badge inactive" id="apiKeyStatus">Not configured</span>
             </label>
             <input type="password" id="apiKeyInput" placeholder="sk-...">
             <p class="help-text">
-                您的API密钥将被加密存储,仅用于您的语音对话服务。<br>
-                获取API密钥: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
+                Your API key will be encrypted and stored securely for your voice conversations.<br>
+                Get API key: <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Platform</a>
             </p>
         </div>
 
         <div class="btn-group">
-            <button class="btn-primary" onclick="saveApiKey()">保存设置</button>
-            <button class="btn-secondary" onclick="goToChat()">进入对话</button>
+            <button class="btn-primary" onclick="saveApiKey()">Save Settings</button>
+            <button class="btn-secondary" onclick="goToChat()">Start Chat</button>
         </div>
 
         <div class="btn-group" style="margin-top: 15px;">
-            <button class="btn-logout" onclick="logout()">退出登录</button>
+            <button class="btn-logout" onclick="logout()">Logout</button>
         </div>
     </div>
 
@@ -314,13 +314,13 @@
 
                 const statusBadge = document.getElementById('apiKeyStatus');
                 if (hasApiKey) {
-                    statusBadge.textContent = '已配置';
+                    statusBadge.textContent = 'Configured';
                     statusBadge.className = 'status-badge active';
-                    document.getElementById('apiKeyInput').placeholder = '已保存 (输入新密钥以更新)';
+                    document.getElementById('apiKeyInput').placeholder = 'Saved (enter new key to update)';
                 }
             } catch (error) {
                 console.error('加载用户信息失败:', error);
-                showMessage('加载用户信息失败', 'error');
+                showMessage('Failed to load user info', 'error');
             }
         }
 
@@ -329,15 +329,15 @@
 
             if (!apiKey) {
                 if (hasApiKey) {
-                    showMessage('API密钥已配置,如需更新请输入新密钥', 'error');
+                    showMessage('API key already configured, enter new key to update', 'error');
                 } else {
-                    showMessage('请输入OpenAI API密钥', 'error');
+                    showMessage('Please enter your OpenAI API key', 'error');
                 }
                 return;
             }
 
             if (!apiKey.startsWith('sk-')) {
-                showMessage('无效的API密钥格式', 'error');
+                showMessage('Invalid API key format', 'error');
                 return;
             }
 
@@ -351,16 +351,16 @@
                 });
 
                 if (response.ok) {
-                    showMessage('API密钥保存成功!', 'success');
+                    showMessage('API key saved successfully!', 'success');
                     document.getElementById('apiKeyInput').value = '';
                     await loadUserInfo();
                 } else {
                     const error = await response.json();
-                    showMessage(error.error || '保存失败', 'error');
+                    showMessage(error.error || 'Failed to save', 'error');
                 }
             } catch (error) {
                 console.error('保存API密钥失败:', error);
-                showMessage('保存失败: ' + error.message, 'error');
+                showMessage('Save failed: ' + error.message, 'error');
             }
         }
 
@@ -377,14 +377,14 @@
 
         function goToChat() {
             if (!hasApiKey) {
-                showMessage('请先配置OpenAI API密钥', 'error');
+                showMessage('Please configure your OpenAI API key first', 'error');
                 return;
             }
             window.location.href = '/';
         }
 
         function logout() {
-            if (confirm('确定要退出登录吗?')) {
+            if (confirm('Are you sure you want to logout?')) {
                 window.location.href = '/auth/logout';
             }
         }
