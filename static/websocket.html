@@ -183,9 +183,193 @@
         .transcript {
             display: none;
         }
+
+        /* 声纹注册模态框 */
+        .voiceprint-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .voiceprint-modal.show {
+            display: flex;
+        }
+
+        .voiceprint-content {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 50px 40px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+
+        .voiceprint-content h2 {
+            font-size: 28px;
+            font-weight: 300;
+            color: #ffffff;
+            margin-bottom: 20px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .voiceprint-content p {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .enrollment-text {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 18px;
+            color: white;
+            line-height: 1.8;
+        }
+
+        .recording-indicator {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .recording-indicator.active {
+            display: block;
+        }
+
+        .pulse-ring {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255, 59, 48, 0.3);
+            margin: 0 auto;
+            position: relative;
+            animation: pulseRing 1.5s infinite;
+        }
+
+        .pulse-ring::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #ff3b30;
+        }
+
+        @keyframes pulseRing {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2);
+                opacity: 0.7;
+            }
+        }
+
+        .voiceprint-btns {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .voiceprint-btns button {
+            flex: 1;
+            padding: 18px 30px;
+            background: white;
+            color: #333;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .voiceprint-btns button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .voiceprint-btns button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .voiceprint-btns .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .voiceprint-status {
+            margin-top: 15px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Voiceprint indicator (top right corner) */
+        .voiceprint-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 10px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-index: 100;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .voiceprint-indicator:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .voiceprint-indicator .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #34d399;
+        }
+
+        .voiceprint-indicator .status-icon.disabled {
+            background: #6b7280;
+        }
+
+        .voiceprint-indicator .status-text {
+            font-size: 14px;
+            color: white;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
+    <!-- Voiceprint status indicator -->
+    <div class="voiceprint-indicator" id="voiceprintIndicator" onclick="showVoiceprintModal()" title="Click to re-register voice">
+        <div class="status-icon" id="voiceprintIcon"></div>
+        <div class="status-text" id="voiceprintText">Voiceprint</div>
+    </div>
+
     <!-- 通话屏幕 -->
     <div class="call-screen">
         <!-- 头像区域 -->
@@ -213,6 +397,28 @@
 
     <audio id="audioElement" autoplay></audio>
 
+    <!-- 声纹注册模态框 -->
+    <div id="voiceprintModal" class="voiceprint-modal">
+        <div class="voiceprint-content">
+            <h2>Voice Registration</h2>
+            <p>To enable voice verification, please read the following text clearly:</p>
+
+            <div class="enrollment-text" id="enrollmentText"></div>
+
+            <div class="recording-indicator" id="recordingIndicator">
+                <div class="pulse-ring"></div>
+                <p style="margin-top: 15px; color: white;">Recording...</p>
+            </div>
+
+            <div class="voiceprint-status" id="voiceprintStatus"></div>
+
+            <div class="voiceprint-btns">
+                <button id="startEnrollmentBtn" onclick="startVoiceprintEnrollment()">Start Recording</button>
+                <button class="btn-secondary" onclick="skipVoiceprintEnrollment()">Skip</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ========================================
         // CONFIGURATION - Easy model switching
@@ -220,7 +426,7 @@
         const CONFIG = {
             // OpenAI Realtime API Model
             // Options:
-            // - 'gpt-4o-realtime-preview-2024-12-17' 
+            // - 'gpt-4o-realtime-preview-2024-12-17'
             // - 'gpt-realtime-2025-08-28' (most capable)
             // - 'gpt-realtime-mini-2025-10-06' (faster, cheaper)
             model: 'gpt-realtime-mini-2025-10-06',
@@ -230,7 +436,12 @@
 
             // Turn detection sensitivity (0.0 - 1.0)
             vadThreshold: 0.5,
-            vadSilenceDuration: 500  // milliseconds
+            vadSilenceDuration: 500,  // milliseconds
+
+            // Voiceprint Recognition (Speaker Verification)
+            enableVoiceprint: true,  // Set to false to disable voiceprint verification
+            voiceprintThreshold: 0.7,  // Similarity threshold (0.0-1.0), higher = stricter
+            voiceprintEnrollmentText: 'Hello, I am registering my voice with VerifAIble. This is my unique voice signature.'
         };
         // ========================================
 
@@ -247,6 +458,292 @@
         let audioQueue = [];
         let isPlaying = false;
         let nextPlayTime = 0;
+
+        // Voiceprint variables
+        let voiceprintProfile = null;  // Stored voiceprint features
+        let isEnrolling = false;
+        let enrollmentAudioData = [];
+        let enrollmentAnalyser = null;
+        let realtimeAudioBuffer = [];  // Buffer for realtime voice verification
+        const BUFFER_SIZE = 4096;
+        const VERIFICATION_INTERVAL = 1000;  // Check every 1 second
+
+        // ========================================
+        // VOICEPRINT FUNCTIONS
+        // ========================================
+
+        // Extract audio features (simplified MFCC-like features using FFT)
+        function extractAudioFeatures(audioData) {
+            const fftSize = 2048;
+            const numMelBands = 40;
+            const features = [];
+
+            // Process audio in chunks
+            for (let i = 0; i < audioData.length - fftSize; i += fftSize / 2) {
+                const chunk = audioData.slice(i, i + fftSize);
+
+                // Apply FFT (simplified - using frequency domain analysis)
+                const spectrum = applyFFT(chunk);
+
+                // Convert to Mel scale (simplified)
+                const melBands = convertToMelScale(spectrum, numMelBands);
+
+                features.push(melBands);
+            }
+
+            // Return averaged features
+            return averageFeatures(features);
+        }
+
+        // Simplified FFT (using Web Audio API's AnalyserNode would be better, but this works for demo)
+        function applyFFT(audioChunk) {
+            const spectrum = new Array(audioChunk.length / 2).fill(0);
+
+            for (let k = 0; k < spectrum.length; k++) {
+                let real = 0;
+                let imag = 0;
+
+                for (let n = 0; n < audioChunk.length; n++) {
+                    const angle = -2 * Math.PI * k * n / audioChunk.length;
+                    real += audioChunk[n] * Math.cos(angle);
+                    imag += audioChunk[n] * Math.sin(angle);
+                }
+
+                spectrum[k] = Math.sqrt(real * real + imag * imag);
+            }
+
+            return spectrum;
+        }
+
+        // Convert frequency spectrum to Mel scale
+        function convertToMelScale(spectrum, numBands) {
+            const melBands = new Array(numBands).fill(0);
+            const bandSize = Math.floor(spectrum.length / numBands);
+
+            for (let i = 0; i < numBands; i++) {
+                const start = i * bandSize;
+                const end = start + bandSize;
+
+                for (let j = start; j < end && j < spectrum.length; j++) {
+                    melBands[i] += spectrum[j];
+                }
+
+                melBands[i] /= bandSize;
+            }
+
+            return melBands;
+        }
+
+        // Average multiple feature vectors
+        function averageFeatures(featuresList) {
+            if (featuresList.length === 0) return null;
+
+            const numFeatures = featuresList[0].length;
+            const avgFeatures = new Array(numFeatures).fill(0);
+
+            for (const features of featuresList) {
+                for (let i = 0; i < numFeatures; i++) {
+                    avgFeatures[i] += features[i];
+                }
+            }
+
+            for (let i = 0; i < numFeatures; i++) {
+                avgFeatures[i] /= featuresList.length;
+            }
+
+            return avgFeatures;
+        }
+
+        // Calculate cosine similarity between two feature vectors
+        function cosineSimilarity(vec1, vec2) {
+            if (!vec1 || !vec2 || vec1.length !== vec2.length) return 0;
+
+            let dotProduct = 0;
+            let mag1 = 0;
+            let mag2 = 0;
+
+            for (let i = 0; i < vec1.length; i++) {
+                dotProduct += vec1[i] * vec2[i];
+                mag1 += vec1[i] * vec1[i];
+                mag2 += vec2[i] * vec2[i];
+            }
+
+            mag1 = Math.sqrt(mag1);
+            mag2 = Math.sqrt(mag2);
+
+            if (mag1 === 0 || mag2 === 0) return 0;
+
+            return dotProduct / (mag1 * mag2);
+        }
+
+        // Verify if current speaker matches enrolled voiceprint
+        function verifyVoiceprint(audioData) {
+            if (!CONFIG.enableVoiceprint || !voiceprintProfile) {
+                return true;  // Always pass if voiceprint is disabled or not enrolled
+            }
+
+            const currentFeatures = extractAudioFeatures(audioData);
+            const similarity = cosineSimilarity(voiceprintProfile, currentFeatures);
+
+            console.log(`Voice similarity: ${(similarity * 100).toFixed(1)}% (threshold: ${(CONFIG.voiceprintThreshold * 100).toFixed(1)}%)`);
+
+            return similarity >= CONFIG.voiceprintThreshold;
+        }
+
+        // Load voiceprint from localStorage
+        function loadVoiceprint() {
+            const stored = localStorage.getItem('verifaible_voiceprint');
+            if (stored) {
+                try {
+                    voiceprintProfile = JSON.parse(stored);
+                    console.log('Voiceprint loaded from storage');
+                    return true;
+                } catch (e) {
+                    console.error('Failed to load voiceprint:', e);
+                }
+            }
+            return false;
+        }
+
+        // Save voiceprint to localStorage
+        function saveVoiceprint(features) {
+            voiceprintProfile = features;
+            localStorage.setItem('verifaible_voiceprint', JSON.stringify(features));
+            console.log('Voiceprint saved to storage');
+            updateVoiceprintIndicator();
+        }
+
+        // Clear voiceprint
+        function clearVoiceprint() {
+            voiceprintProfile = null;
+            localStorage.removeItem('verifaible_voiceprint');
+            console.log('Voiceprint cleared');
+            updateVoiceprintIndicator();
+        }
+
+        // Show voiceprint enrollment modal
+        function showVoiceprintModal() {
+            const modal = document.getElementById('voiceprintModal');
+            const enrollmentText = document.getElementById('enrollmentText');
+
+            enrollmentText.textContent = CONFIG.voiceprintEnrollmentText;
+            modal.classList.add('show');
+        }
+
+        // Start voiceprint enrollment
+        async function startVoiceprintEnrollment() {
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            const startBtn = document.getElementById('startEnrollmentBtn');
+            const statusEl = document.getElementById('voiceprintStatus');
+
+            try {
+                startBtn.disabled = true;
+                recordingIndicator.classList.add('active');
+                statusEl.textContent = 'Recording... Please read the text above clearly.';
+
+                // Get microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                const source = audioCtx.createMediaStreamSource(stream);
+                enrollmentAnalyser = audioCtx.createAnalyser();
+                enrollmentAnalyser.fftSize = 2048;
+
+                source.connect(enrollmentAnalyser);
+
+                enrollmentAudioData = [];
+                isEnrolling = true;
+
+                // Capture audio for 5 seconds
+                const captureInterval = setInterval(() => {
+                    const dataArray = new Float32Array(enrollmentAnalyser.fftSize);
+                    enrollmentAnalyser.getFloatTimeDomainData(dataArray);
+                    enrollmentAudioData.push(...Array.from(dataArray));
+                }, 100);
+
+                setTimeout(() => {
+                    clearInterval(captureInterval);
+                    isEnrolling = false;
+
+                    // Stop recording
+                    stream.getTracks().forEach(track => track.stop());
+                    audioCtx.close();
+
+                    // Extract and save features
+                    const features = extractAudioFeatures(enrollmentAudioData);
+
+                    if (features && features.length > 0) {
+                        saveVoiceprint(features);
+                        statusEl.textContent = 'Voice registered successfully!';
+                        statusEl.style.color = '#34d399';
+
+                        setTimeout(() => {
+                            hideVoiceprintModal();
+                        }, 2000);
+                    } else {
+                        throw new Error('Failed to extract voice features');
+                    }
+
+                    recordingIndicator.classList.remove('active');
+                    startBtn.disabled = false;
+                }, 5000);
+
+            } catch (error) {
+                console.error('Enrollment failed:', error);
+                statusEl.textContent = 'Failed to record. Please try again.';
+                statusEl.style.color = '#ff3b30';
+                recordingIndicator.classList.remove('active');
+                startBtn.disabled = false;
+            }
+        }
+
+        // Skip voiceprint enrollment
+        function skipVoiceprintEnrollment() {
+            hideVoiceprintModal();
+        }
+
+        // Hide voiceprint modal
+        function hideVoiceprintModal() {
+            const modal = document.getElementById('voiceprintModal');
+            modal.classList.remove('show');
+        }
+
+        // Check if voiceprint enrollment is needed
+        function checkVoiceprintEnrollment() {
+            if (CONFIG.enableVoiceprint && !loadVoiceprint()) {
+                showVoiceprintModal();
+            }
+        }
+
+        // Update voiceprint indicator UI
+        function updateVoiceprintIndicator() {
+            const icon = document.getElementById('voiceprintIcon');
+            const text = document.getElementById('voiceprintText');
+            const indicator = document.getElementById('voiceprintIndicator');
+
+            if (!CONFIG.enableVoiceprint) {
+                icon.classList.add('disabled');
+                text.textContent = 'Voiceprint Off';
+                indicator.title = 'Voiceprint verification is disabled';
+            } else if (voiceprintProfile) {
+                icon.classList.remove('disabled');
+                text.textContent = 'Verified';
+                indicator.title = 'Click to re-register voice';
+            } else {
+                icon.classList.add('disabled');
+                text.textContent = 'Not Enrolled';
+                indicator.title = 'Click to register your voice';
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkVoiceprintEnrollment();
+            updateVoiceprintIndicator();
+        });
+
+        // ========================================
+        // END VOICEPRINT FUNCTIONS
+        // ========================================
 
         function addMessage(role, text) {
             const msg = document.createElement('div');
@@ -383,20 +880,54 @@
                         source.connect(processor);
                         processor.connect(audioContext.destination);
 
+                        let lastVerificationTime = 0;
+                        let voiceprintVerified = !CONFIG.enableVoiceprint;  // Auto-pass if disabled
+
                         processor.onaudioprocess = (e) => {
                             if (ws && ws.readyState === WebSocket.OPEN) {
                                 const inputData = e.inputBuffer.getChannelData(0);
-                                const pcm16 = new Int16Array(inputData.length);
-                                for (let i = 0; i < inputData.length; i++) {
-                                    pcm16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+
+                                // Add to realtime buffer for voiceprint verification
+                                realtimeAudioBuffer.push(...Array.from(inputData));
+
+                                // Periodic voiceprint verification
+                                const now = Date.now();
+                                if (CONFIG.enableVoiceprint && (now - lastVerificationTime) >= VERIFICATION_INTERVAL) {
+                                    lastVerificationTime = now;
+
+                                    if (realtimeAudioBuffer.length >= BUFFER_SIZE) {
+                                        // Verify voiceprint
+                                        const bufferToVerify = realtimeAudioBuffer.slice(-BUFFER_SIZE);
+                                        voiceprintVerified = verifyVoiceprint(bufferToVerify);
+
+                                        if (!voiceprintVerified) {
+                                            console.warn('Voice verification failed - audio not sent');
+                                            // Clear buffer to prevent sending unverified audio
+                                            realtimeAudioBuffer = [];
+                                            return;
+                                        }
+                                    }
                                 }
 
-                                // 转为base64并发送
-                                const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
-                                ws.send(JSON.stringify({
-                                    type: 'input_audio_buffer.append',
-                                    audio: base64
-                                }));
+                                // Keep buffer size manageable
+                                if (realtimeAudioBuffer.length > BUFFER_SIZE * 2) {
+                                    realtimeAudioBuffer = realtimeAudioBuffer.slice(-BUFFER_SIZE);
+                                }
+
+                                // Only send audio if voiceprint is verified (or disabled)
+                                if (voiceprintVerified || !CONFIG.enableVoiceprint) {
+                                    const pcm16 = new Int16Array(inputData.length);
+                                    for (let i = 0; i < inputData.length; i++) {
+                                        pcm16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
+                                    }
+
+                                    // 转为base64并发送
+                                    const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+                                    ws.send(JSON.stringify({
+                                        type: 'input_audio_buffer.append',
+                                        audio: base64
+                                    }));
+                                }
                             }
                         };
 
@@ -509,6 +1040,8 @@
             }
             // 重置音频播放时间
             nextPlayTime = 0;
+            // 清空声纹缓冲区
+            realtimeAudioBuffer = [];
             updateStatus('Click to start conversation', false);
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
