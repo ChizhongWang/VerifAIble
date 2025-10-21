@@ -361,13 +361,172 @@
             color: white;
             font-weight: 500;
         }
+
+        /* 通话模式选择模态框 */
+        .mode-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .mode-modal.show {
+            display: flex;
+        }
+
+        .mode-content {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px 35px;
+            max-width: 450px;
+            width: 90%;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .mode-content h2 {
+            font-size: 24px;
+            font-weight: 300;
+            color: #ffffff;
+            margin-bottom: 25px;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-option {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .mode-option.selected {
+            background: rgba(52, 211, 153, 0.3);
+            border-color: #34d399;
+        }
+
+        .mode-option-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .mode-icon {
+            font-size: 28px;
+        }
+
+        .mode-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .mode-badge {
+            background: #34d399;
+            color: white;
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        .mode-description {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            margin-left: 40px;
+        }
+
+        .voiceprint-option {
+            margin-top: 12px;
+            margin-left: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .voiceprint-option input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+
+        .voiceprint-option label {
+            font-size: 14px;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .mode-warning {
+            background: rgba(245, 158, 11, 0.2);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 10px;
+            padding: 12px;
+            margin-top: 20px;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.9);
+            line-height: 1.5;
+        }
+
+        .mode-warning-icon {
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .mode-buttons button {
+            flex: 1;
+            padding: 15px;
+            background: white;
+            color: #333;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mode-buttons button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .mode-buttons button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
     </style>
 </head>
 <body>
     <!-- Voiceprint status indicator -->
-    <div class="voiceprint-indicator" id="voiceprintIndicator" onclick="showVoiceprintModal()" title="Click to re-register voice">
+    <div class="voiceprint-indicator" id="voiceprintIndicator" onclick="openSettings()" title="Click to change settings">
         <div class="status-icon" id="voiceprintIcon"></div>
-        <div class="status-text" id="voiceprintText">Voiceprint</div>
+        <div class="status-text" id="voiceprintText">Mode</div>
     </div>
 
     <!-- 通话屏幕 -->
@@ -396,6 +555,55 @@
     </div>
 
     <audio id="audioElement" autoplay></audio>
+
+    <!-- 通话模式选择模态框 -->
+    <div id="modeModal" class="mode-modal">
+        <div class="mode-content">
+            <h2>📞 Select Call Mode</h2>
+
+            <!-- 听筒模式 -->
+            <div class="mode-option" id="earpieceMode" onclick="selectMode('earpiece')">
+                <div class="mode-option-header">
+                    <span class="mode-icon">📱</span>
+                    <span class="mode-title">Earpiece Mode</span>
+                    <span class="mode-badge">Recommended</span>
+                </div>
+                <div class="mode-description">
+                    Hold phone close to ear, like a regular call<br>
+                    ✓ More private<br>
+                    ✓ Auto noise filtering<br>
+                    ✓ No voiceprint needed
+                </div>
+            </div>
+
+            <!-- 免提模式 -->
+            <div class="mode-option" id="speakerMode" onclick="selectMode('speaker')">
+                <div class="mode-option-header">
+                    <span class="mode-icon">🔊</span>
+                    <span class="mode-title">Speaker Mode</span>
+                </div>
+                <div class="mode-description">
+                    Hands-free, suitable for open environments
+                </div>
+                <div class="voiceprint-option">
+                    <input type="checkbox" id="enableVoiceprintCheck" onclick="event.stopPropagation()">
+                    <label for="enableVoiceprintCheck" onclick="event.stopPropagation()">
+                        Enable voiceprint verification (filter other voices)
+                    </label>
+                </div>
+            </div>
+
+            <div class="mode-warning" id="modeWarning" style="display: none;">
+                <span class="mode-warning-icon">⚠️</span>
+                <strong>Note:</strong> Speaker mode without voiceprint may pick up other voices,
+                which could confuse the AI. Consider enabling voiceprint for better experience.
+            </div>
+
+            <div class="mode-buttons">
+                <button onclick="confirmMode()">Confirm</button>
+            </div>
+        </div>
+    </div>
 
     <!-- 声纹注册模态框 -->
     <div id="voiceprintModal" class="voiceprint-modal">
@@ -438,8 +646,11 @@
             vadThreshold: 0.5,
             vadSilenceDuration: 500,  // milliseconds
 
+            // Call Mode
+            callMode: null,  // 'earpiece' or 'speaker', set by user
+
             // Voiceprint Recognition (Speaker Verification)
-            enableVoiceprint: true,  // Set to false to disable voiceprint verification
+            enableVoiceprint: false,  // Will be set based on call mode and user choice
             voiceprintThreshold: 0.7,  // Similarity threshold (0.0-1.0), higher = stricter
             voiceprintEnrollmentText: 'Hello, I am registering my voice with VerifAIble. This is my unique voice signature.'
         };
@@ -720,24 +931,172 @@
             const text = document.getElementById('voiceprintText');
             const indicator = document.getElementById('voiceprintIndicator');
 
-            if (!CONFIG.enableVoiceprint) {
+            if (!CONFIG.callMode) {
                 icon.classList.add('disabled');
-                text.textContent = 'Voiceprint Off';
-                indicator.title = 'Voiceprint verification is disabled';
-            } else if (voiceprintProfile) {
+                text.textContent = 'No Mode';
+                indicator.title = 'Click to select call mode';
+            } else if (CONFIG.callMode === 'earpiece') {
                 icon.classList.remove('disabled');
-                text.textContent = 'Verified';
-                indicator.title = 'Click to re-register voice';
-            } else {
-                icon.classList.add('disabled');
-                text.textContent = 'Not Enrolled';
-                indicator.title = 'Click to register your voice';
+                text.textContent = '📱 Earpiece';
+                indicator.title = 'Earpiece mode - Click to change';
+            } else if (CONFIG.callMode === 'speaker') {
+                if (CONFIG.enableVoiceprint) {
+                    if (voiceprintProfile) {
+                        icon.classList.remove('disabled');
+                        text.textContent = '🔊 Protected';
+                        indicator.title = 'Speaker + Voiceprint - Click to change';
+                    } else {
+                        icon.classList.add('disabled');
+                        text.textContent = '🔊 Not Enrolled';
+                        indicator.title = 'Click to register voiceprint';
+                    }
+                } else {
+                    icon.classList.remove('disabled');
+                    text.textContent = '🔊 Speaker';
+                    indicator.title = 'Speaker mode - Click to change';
+                }
             }
         }
 
+        // Open settings (mode selection or voiceprint)
+        function openSettings() {
+            if (!CONFIG.callMode) {
+                showModeModal();
+            } else if (CONFIG.callMode === 'speaker' && CONFIG.enableVoiceprint && !voiceprintProfile) {
+                // 免提+声纹但未注册：显示声纹注册
+                showVoiceprintModal();
+            } else {
+                // 其他情况：重新选择模式
+                showModeModal();
+            }
+        }
+
+        // ========================================
+        // CALL MODE SELECTION
+        // ========================================
+
+        let selectedMode = null;
+
+        function showModeModal() {
+            const modal = document.getElementById('modeModal');
+            modal.classList.add('show');
+        }
+
+        function hideModeModal() {
+            const modal = document.getElementById('modeModal');
+            modal.classList.remove('show');
+        }
+
+        function selectMode(mode) {
+            selectedMode = mode;
+
+            // Update UI
+            document.getElementById('earpieceMode').classList.remove('selected');
+            document.getElementById('speakerMode').classList.remove('selected');
+
+            if (mode === 'earpiece') {
+                document.getElementById('earpieceMode').classList.add('selected');
+                document.getElementById('modeWarning').style.display = 'none';
+                // 听筒模式禁用复选框
+                document.getElementById('enableVoiceprintCheck').disabled = true;
+                document.getElementById('enableVoiceprintCheck').checked = false;
+            } else if (mode === 'speaker') {
+                document.getElementById('speakerMode').classList.add('selected');
+                // 免提模式启用复选框
+                document.getElementById('enableVoiceprintCheck').disabled = false;
+                updateModeWarning();
+            }
+        }
+
+        function updateModeWarning() {
+            const voiceprintEnabled = document.getElementById('enableVoiceprintCheck').checked;
+            const warning = document.getElementById('modeWarning');
+
+            if (selectedMode === 'speaker' && !voiceprintEnabled) {
+                warning.style.display = 'block';
+            } else {
+                warning.style.display = 'none';
+            }
+        }
+
+        // 监听复选框变化
+        document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('enableVoiceprintCheck');
+            if (checkbox) {
+                checkbox.addEventListener('change', updateModeWarning);
+            }
+        });
+
+        function confirmMode() {
+            if (!selectedMode) {
+                alert('Please select a call mode');
+                return;
+            }
+
+            const voiceprintCheckbox = document.getElementById('enableVoiceprintCheck');
+
+            // 根据选择配置CONFIG
+            CONFIG.callMode = selectedMode;
+
+            if (selectedMode === 'earpiece') {
+                // 听筒模式：不需要声纹识别
+                CONFIG.enableVoiceprint = false;
+                console.log('Earpiece mode selected - voiceprint disabled');
+
+                hideModeModal();
+                updateVoiceprintIndicator();
+
+            } else if (selectedMode === 'speaker') {
+                // 免提模式：根据用户选择
+                CONFIG.enableVoiceprint = voiceprintCheckbox.checked;
+                console.log(`Speaker mode selected - voiceprint ${CONFIG.enableVoiceprint ? 'enabled' : 'disabled'}`);
+
+                hideModeModal();
+
+                // 如果启用声纹，检查是否需要注册
+                if (CONFIG.enableVoiceprint) {
+                    checkVoiceprintEnrollment();
+                }
+
+                updateVoiceprintIndicator();
+            }
+
+            // 保存到localStorage
+            localStorage.setItem('verifaible_call_mode', selectedMode);
+            localStorage.setItem('verifaible_voiceprint_enabled', CONFIG.enableVoiceprint);
+        }
+
+        function loadSavedMode() {
+            const savedMode = localStorage.getItem('verifaible_call_mode');
+            const savedVoiceprintEnabled = localStorage.getItem('verifaible_voiceprint_enabled');
+
+            if (savedMode) {
+                CONFIG.callMode = savedMode;
+                CONFIG.enableVoiceprint = savedVoiceprintEnabled === 'true';
+                console.log(`Loaded saved mode: ${savedMode}, voiceprint: ${CONFIG.enableVoiceprint}`);
+                return true;
+            }
+
+            return false;
+        }
+
+        // ========================================
+        // END CALL MODE SELECTION
+        // ========================================
+
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', () => {
-            checkVoiceprintEnrollment();
+            // 检查是否有保存的模式设置
+            if (!loadSavedMode()) {
+                // 首次访问，显示模式选择
+                showModeModal();
+            } else {
+                // 已有设置，检查是否需要声纹注册
+                if (CONFIG.enableVoiceprint) {
+                    checkVoiceprintEnrollment();
+                }
+            }
+
             updateVoiceprintIndicator();
         });
 
@@ -801,6 +1160,18 @@
         }
 
         async function connect() {
+            // 检查是否已选择通话模式
+            if (!CONFIG.callMode) {
+                showModeModal();
+                return;
+            }
+
+            // 如果启用声纹但未注册，显示注册模态框
+            if (CONFIG.enableVoiceprint && !voiceprintProfile) {
+                showVoiceprintModal();
+                return;
+            }
+
             try {
                 connectBtn.disabled = true;
                 updateStatus('Connecting...', false);
