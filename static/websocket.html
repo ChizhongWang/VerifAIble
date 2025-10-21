@@ -608,20 +608,29 @@
     <!-- 声纹注册模态框 -->
     <div id="voiceprintModal" class="voiceprint-modal">
         <div class="voiceprint-content">
-            <h2>Voice Registration</h2>
-            <p>To enable voice verification, please read the following text clearly:</p>
+            <h2>🎤 Voice Registration</h2>
+            <p>Please read the text below clearly. You can read both languages or just one - whichever you're comfortable with.</p>
 
-            <div class="enrollment-text" id="enrollmentText"></div>
+            <div class="enrollment-text">
+                <p style="margin-bottom: 15px;"><strong>中文段落：</strong><br>
+                我们的宇宙诞生于约一百三十八亿年前。从那一刻起，它就处在持续的膨胀之中，空间本身在不断延伸。星系在彼此远离，就像一个正在被吹大的气球表面的点。这种膨胀是宇宙演化的基本驱动力之一，决定了它的过去与未来。</p>
 
-            <div class="recording-indicator" id="recordingIndicator">
+                <p><strong>English Paragraph:</strong><br>
+                Our universe was born approximately 13.8 billion years ago. Since that moment, it has been in a state of continuous expansion, with space itself stretching. Galaxies are moving away from each other, like points on the surface of a balloon being inflated. This expansion is one of the fundamental drivers of cosmic evolution, defining its past and its future.</p>
+            </div>
+
+            <div class="recording-indicator" id="recordingIndicator" style="display: none;">
                 <div class="pulse-ring"></div>
-                <p style="margin-top: 15px; color: white;">Recording...</p>
+                <p style="margin-top: 15px; color: white;">Recording: <span id="enrollmentTimer">0:00</span></p>
             </div>
 
             <div class="voiceprint-status" id="voiceprintStatus"></div>
 
             <div class="voiceprint-btns">
-                <button id="startEnrollmentBtn" onclick="startVoiceprintEnrollment()">Start Recording</button>
+                <button id="startEnrollmentBtn" onclick="toggleEnrollmentRecording()">
+                    <span id="enrollmentBtnIcon">⏺️</span>
+                    <span id="enrollmentBtnText">Start Recording</span>
+                </button>
                 <button class="btn-secondary" onclick="skipVoiceprintEnrollment()">Skip</button>
             </div>
         </div>
@@ -801,89 +810,192 @@
             return similarity >= CONFIG.voiceprintThreshold;
         }
 
-        // Load voiceprint from localStorage
-        function loadVoiceprint() {
-            const stored = localStorage.getItem('verifaible_voiceprint');
-            if (stored) {
-                try {
-                    voiceprintProfile = JSON.parse(stored);
-                    console.log('Voiceprint loaded from storage');
-                    return true;
-                } catch (e) {
-                    console.error('Failed to load voiceprint:', e);
+        // Load voiceprint from server
+        async function loadVoiceprint() {
+            try {
+                const response = await fetch('/auth/user/voiceprint');
+                if (!response.ok) {
+                    console.error('Failed to load voiceprint from server');
+                    return false;
                 }
+
+                const data = await response.json();
+                if (data.has_voiceprint && data.voiceprint_profile) {
+                    voiceprintProfile = JSON.parse(data.voiceprint_profile);
+                    console.log('Voiceprint loaded from server');
+                    return true;
+                }
+            } catch (e) {
+                console.error('Failed to load voiceprint:', e);
             }
             return false;
         }
 
-        // Save voiceprint to localStorage
-        function saveVoiceprint(features) {
-            voiceprintProfile = features;
-            localStorage.setItem('verifaible_voiceprint', JSON.stringify(features));
-            console.log('Voiceprint saved to storage');
-            updateVoiceprintIndicator();
+        // Save voiceprint to server
+        async function saveVoiceprint(features) {
+            try {
+                const response = await fetch('/auth/user/voiceprint', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        voiceprint_profile: JSON.stringify(features),
+                        call_mode: CONFIG.callMode,
+                        voiceprint_enabled: CONFIG.enableVoiceprint
+                    })
+                });
+
+                if (response.ok) {
+                    voiceprintProfile = features;
+                    console.log('Voiceprint saved to server');
+                    updateVoiceprintIndicator();
+                    return true;
+                } else {
+                    console.error('Failed to save voiceprint to server');
+                    return false;
+                }
+            } catch (e) {
+                console.error('Failed to save voiceprint:', e);
+                return false;
+            }
         }
 
-        // Clear voiceprint
-        function clearVoiceprint() {
-            voiceprintProfile = null;
-            localStorage.removeItem('verifaible_voiceprint');
-            console.log('Voiceprint cleared');
-            updateVoiceprintIndicator();
+        // Clear voiceprint from server
+        async function clearVoiceprint() {
+            try {
+                const response = await fetch('/auth/user/voiceprint', {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    voiceprintProfile = null;
+                    console.log('Voiceprint cleared from server');
+                    updateVoiceprintIndicator();
+                    return true;
+                }
+            } catch (e) {
+                console.error('Failed to clear voiceprint:', e);
+            }
+            return false;
         }
 
         // Show voiceprint enrollment modal
         function showVoiceprintModal() {
             const modal = document.getElementById('voiceprintModal');
-            const enrollmentText = document.getElementById('enrollmentText');
-
-            enrollmentText.textContent = CONFIG.voiceprintEnrollmentText;
             modal.classList.add('show');
+
+            // Reset UI
+            document.getElementById('recordingIndicator').style.display = 'none';
+            document.getElementById('voiceprintStatus').textContent = '';
+            document.getElementById('enrollmentBtnIcon').textContent = '⏺️';
+            document.getElementById('enrollmentBtnText').textContent = 'Start Recording';
         }
 
-        // Start voiceprint enrollment
-        async function startVoiceprintEnrollment() {
+        // Toggle enrollment recording (start/stop)
+        let enrollmentRecordingStartTime = null;
+        let enrollmentRecordingTimer = null;
+        let enrollmentMediaStream = null;
+        let enrollmentAudioContext = null;
+
+        async function toggleEnrollmentRecording() {
+            if (!isEnrolling) {
+                await startEnrollmentRecording();
+            } else {
+                await stopEnrollmentRecording();
+            }
+        }
+
+        // Start enrollment recording
+        async function startEnrollmentRecording() {
             const recordingIndicator = document.getElementById('recordingIndicator');
-            const startBtn = document.getElementById('startEnrollmentBtn');
             const statusEl = document.getElementById('voiceprintStatus');
 
             try {
-                startBtn.disabled = true;
-                recordingIndicator.classList.add('active');
-                statusEl.textContent = 'Recording... Please read the text above clearly.';
-
                 // Get microphone access
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-                const source = audioCtx.createMediaStreamSource(stream);
-                enrollmentAnalyser = audioCtx.createAnalyser();
+                enrollmentMediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                enrollmentAudioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                const source = enrollmentAudioContext.createMediaStreamSource(enrollmentMediaStream);
+                enrollmentAnalyser = enrollmentAudioContext.createAnalyser();
                 enrollmentAnalyser.fftSize = 2048;
 
                 source.connect(enrollmentAnalyser);
 
                 enrollmentAudioData = [];
                 isEnrolling = true;
+                enrollmentRecordingStartTime = Date.now();
 
-                // Capture audio for 5 seconds
-                const captureInterval = setInterval(() => {
+                // Update UI
+                recordingIndicator.style.display = 'block';
+                document.getElementById('enrollmentBtnIcon').textContent = '⏹️';
+                document.getElementById('enrollmentBtnText').textContent = 'Stop Recording';
+                statusEl.textContent = 'Recording... Please read the text above clearly.';
+                statusEl.style.color = 'white';
+
+                // Start timer
+                enrollmentRecordingTimer = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - enrollmentRecordingStartTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    document.getElementById('enrollmentTimer').textContent =
+                        `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                    // Capture audio data
                     const dataArray = new Float32Array(enrollmentAnalyser.fftSize);
                     enrollmentAnalyser.getFloatTimeDomainData(dataArray);
                     enrollmentAudioData.push(...Array.from(dataArray));
                 }, 100);
 
-                setTimeout(() => {
-                    clearInterval(captureInterval);
-                    isEnrolling = false;
+            } catch (error) {
+                console.error('Enrollment failed:', error);
+                statusEl.textContent = 'Failed to access microphone. Please try again.';
+                statusEl.style.color = '#ff3b30';
+            }
+        }
 
-                    // Stop recording
-                    stream.getTracks().forEach(track => track.stop());
-                    audioCtx.close();
+        // Stop enrollment recording
+        async function stopEnrollmentRecording() {
+            if (!isEnrolling) return;
 
-                    // Extract and save features
-                    const features = extractAudioFeatures(enrollmentAudioData);
+            const recordingIndicator = document.getElementById('recordingIndicator');
+            const statusEl = document.getElementById('voiceprintStatus');
 
-                    if (features && features.length > 0) {
-                        saveVoiceprint(features);
+            // Stop recording
+            isEnrolling = false;
+            clearInterval(enrollmentRecordingTimer);
+
+            if (enrollmentMediaStream) {
+                enrollmentMediaStream.getTracks().forEach(track => track.stop());
+            }
+            if (enrollmentAudioContext) {
+                enrollmentAudioContext.close();
+            }
+
+            // Update UI
+            recordingIndicator.style.display = 'none';
+            document.getElementById('enrollmentBtnIcon').textContent = '⏺️';
+            document.getElementById('enrollmentBtnText').textContent = 'Start Recording';
+            document.getElementById('enrollmentTimer').textContent = '0:00';
+
+            // Check recording duration
+            const recordingDuration = (Date.now() - enrollmentRecordingStartTime) / 1000;
+            if (recordingDuration < 3) {
+                statusEl.textContent = 'Recording too short. Please record at least 3 seconds.';
+                statusEl.style.color = '#ff3b30';
+                return;
+            }
+
+            // Extract and save features
+            try {
+                statusEl.textContent = 'Processing...';
+                statusEl.style.color = 'white';
+
+                const features = extractAudioFeatures(enrollmentAudioData);
+
+                if (features && features.length > 0) {
+                    const success = await saveVoiceprint(features);
+
+                    if (success) {
                         statusEl.textContent = 'Voice registered successfully!';
                         statusEl.style.color = '#34d399';
 
@@ -891,19 +1003,15 @@
                             hideVoiceprintModal();
                         }, 2000);
                     } else {
-                        throw new Error('Failed to extract voice features');
+                        throw new Error('Failed to save voiceprint to server');
                     }
-
-                    recordingIndicator.classList.remove('active');
-                    startBtn.disabled = false;
-                }, 5000);
-
+                } else {
+                    throw new Error('Failed to extract voice features');
+                }
             } catch (error) {
-                console.error('Enrollment failed:', error);
-                statusEl.textContent = 'Failed to record. Please try again.';
+                console.error('Failed to process voiceprint:', error);
+                statusEl.textContent = 'Failed to save. Please try again.';
                 statusEl.style.color = '#ff3b30';
-                recordingIndicator.classList.remove('active');
-                startBtn.disabled = false;
             }
         }
 
@@ -919,9 +1027,12 @@
         }
 
         // Check if voiceprint enrollment is needed
-        function checkVoiceprintEnrollment() {
-            if (CONFIG.enableVoiceprint && !loadVoiceprint()) {
-                showVoiceprintModal();
+        async function checkVoiceprintEnrollment() {
+            if (CONFIG.enableVoiceprint) {
+                const hasVoiceprint = await loadVoiceprint();
+                if (!hasVoiceprint) {
+                    showVoiceprintModal();
+                }
             }
         }
 
@@ -1027,7 +1138,7 @@
             }
         });
 
-        function confirmMode() {
+        async function confirmMode() {
             if (!selectedMode) {
                 alert('Please select a call mode');
                 return;
@@ -1043,38 +1154,61 @@
                 CONFIG.enableVoiceprint = false;
                 console.log('Earpiece mode selected - voiceprint disabled');
 
-                hideModeModal();
-                updateVoiceprintIndicator();
-
             } else if (selectedMode === 'speaker') {
                 // 免提模式：根据用户选择
                 CONFIG.enableVoiceprint = voiceprintCheckbox.checked;
                 console.log(`Speaker mode selected - voiceprint ${CONFIG.enableVoiceprint ? 'enabled' : 'disabled'}`);
-
-                hideModeModal();
-
-                // 如果启用声纹，检查是否需要注册
-                if (CONFIG.enableVoiceprint) {
-                    checkVoiceprintEnrollment();
-                }
-
-                updateVoiceprintIndicator();
             }
 
-            // 保存到localStorage
-            localStorage.setItem('verifaible_call_mode', selectedMode);
-            localStorage.setItem('verifaible_voiceprint_enabled', CONFIG.enableVoiceprint);
+            // 保存到服务器
+            try {
+                const response = await fetch('/auth/user/call-mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        call_mode: selectedMode,
+                        voiceprint_enabled: CONFIG.enableVoiceprint
+                    })
+                });
+
+                if (response.ok) {
+                    console.log('Call mode saved to server');
+                } else {
+                    console.error('Failed to save call mode to server');
+                }
+            } catch (e) {
+                console.error('Failed to save call mode:', e);
+            }
+
+            hideModeModal();
+
+            // 如果启用声纹，检查是否需要注册
+            if (CONFIG.enableVoiceprint) {
+                await checkVoiceprintEnrollment();
+            }
+
+            updateVoiceprintIndicator();
         }
 
-        function loadSavedMode() {
-            const savedMode = localStorage.getItem('verifaible_call_mode');
-            const savedVoiceprintEnabled = localStorage.getItem('verifaible_voiceprint_enabled');
+        async function loadSavedMode() {
+            try {
+                const response = await fetch('/auth/user/voiceprint');
+                if (!response.ok) {
+                    console.error('Failed to load user settings from server');
+                    return false;
+                }
 
-            if (savedMode) {
-                CONFIG.callMode = savedMode;
-                CONFIG.enableVoiceprint = savedVoiceprintEnabled === 'true';
-                console.log(`Loaded saved mode: ${savedMode}, voiceprint: ${CONFIG.enableVoiceprint}`);
-                return true;
+                const data = await response.json();
+                if (data.call_mode) {
+                    CONFIG.callMode = data.call_mode;
+                    CONFIG.enableVoiceprint = data.voiceprint_enabled || false;
+                    console.log(`Loaded saved mode from server: ${data.call_mode}, voiceprint: ${CONFIG.enableVoiceprint}`);
+                    return true;
+                }
+            } catch (e) {
+                console.error('Failed to load saved mode:', e);
             }
 
             return false;
@@ -1085,15 +1219,17 @@
         // ========================================
 
         // Initialize on page load
-        window.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', async () => {
             // 检查是否有保存的模式设置
-            if (!loadSavedMode()) {
+            const hasSavedMode = await loadSavedMode();
+
+            if (!hasSavedMode) {
                 // 首次访问，显示模式选择
                 showModeModal();
             } else {
                 // 已有设置，检查是否需要声纹注册
                 if (CONFIG.enableVoiceprint) {
-                    checkVoiceprintEnrollment();
+                    await checkVoiceprintEnrollment();
                 }
             }
 
