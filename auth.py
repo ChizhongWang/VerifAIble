@@ -273,3 +273,31 @@ def update_call_mode():
 
     logger.info(f"用户 {user.email} 更新通话模式: {call_mode}, 声纹: {voiceprint_enabled}")
     return jsonify({'success': True, 'message': 'Call mode updated'})
+
+@auth_bp.route('/user/profile', methods=['POST'])
+def update_profile():
+    """更新用户个人信息"""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    user = User.query.get(session['user_id'])
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    data = request.json
+    name = data.get('name', '').strip()
+
+    if not name:
+        return jsonify({'error': 'Name cannot be empty'}), 400
+
+    if len(name) > 100:
+        return jsonify({'error': 'Name too long (max 100 characters)'}), 400
+
+    user.name = name
+    db.session.commit()
+
+    # Update session
+    session['user_name'] = name
+
+    logger.info(f"用户 {user.email} 更新了名字: {name}")
+    return jsonify({'success': True, 'message': 'Profile updated', 'name': name})

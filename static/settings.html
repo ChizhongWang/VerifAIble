@@ -364,6 +364,14 @@
         </div>
 
         <div class="form-group">
+            <label>Display Name</label>
+            <input type="text" id="nameInput" placeholder="Your name" maxlength="100">
+            <p class="help-text">
+                This name will be used in AI voice warnings when voiceprint verification fails.
+            </p>
+        </div>
+
+        <div class="form-group">
             <label>
                 OpenAI API Key
                 <span class="status-badge inactive" id="apiKeyStatus">Not configured</span>
@@ -376,7 +384,7 @@
         </div>
 
         <div class="btn-group">
-            <button class="btn-primary" onclick="saveApiKey()">Save Settings</button>
+            <button class="btn-primary" onclick="saveSettings()">Save Settings</button>
             <button class="btn-secondary" onclick="goToChat()">Start Chat</button>
         </div>
 
@@ -447,6 +455,9 @@
                     </div>
                 `;
 
+                // 填充名字输入框
+                document.getElementById('nameInput').value = user.name || '';
+
                 // 检查API密钥状态
                 const keyResponse = await fetch('/auth/user/api-key');
                 const keyData = await keyResponse.json();
@@ -505,6 +516,71 @@
             } catch (error) {
                 console.error('保存API密钥失败:', error);
                 showMessage('Save failed: ' + error.message, 'error');
+            }
+        }
+
+        async function saveName() {
+            const name = document.getElementById('nameInput').value.trim();
+
+            if (!name) {
+                showMessage('Name cannot be empty', 'error');
+                return false;
+            }
+
+            if (name.length > 100) {
+                showMessage('Name too long (max 100 characters)', 'error');
+                return false;
+            }
+
+            try {
+                const response = await fetch('/auth/user/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name: name })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showMessage('Name updated successfully!', 'success');
+                    // Update displayed name
+                    document.querySelector('.user-name').textContent = data.name;
+                    return true;
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error || 'Failed to update name', 'error');
+                    return false;
+                }
+            } catch (error) {
+                console.error('保存名字失败:', error);
+                showMessage('Save failed: ' + error.message, 'error');
+                return false;
+            }
+        }
+
+        async function saveSettings() {
+            // Save both name and API key
+            let nameSuccess = true;
+            let apiKeySuccess = true;
+
+            // Save name if changed
+            const currentName = document.querySelector('.user-name').textContent;
+            const newName = document.getElementById('nameInput').value.trim();
+            if (newName && newName !== currentName) {
+                nameSuccess = await saveName();
+            }
+
+            // Save API key if provided
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            if (apiKey) {
+                await saveApiKey();
+                apiKeySuccess = true;
+            }
+
+            if (nameSuccess && !apiKey) {
+                // Only name was saved
+                showMessage('Settings saved successfully!', 'success');
             }
         }
 
