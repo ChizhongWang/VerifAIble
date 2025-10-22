@@ -660,7 +660,8 @@
 
             // Voiceprint Recognition (Speaker Verification)
             enableVoiceprint: false,  // Will be set based on call mode and user choice
-            voiceprintThreshold: 0.7,  // Similarity threshold (0.0-1.0), higher = stricter
+            voiceprintThreshold: 0.95,  // Similarity threshold (0.0-1.0), higher = stricter (increased for better security)
+            voiceprintCooldownPeriod: 15000,  // Cooldown period in ms after failed verification (15 seconds)
             voiceprintEnrollmentText: 'Hello, I am registering my voice with VerifAIble. This is my unique voice signature.'
         };
         // ========================================
@@ -678,6 +679,7 @@
         let audioQueue = [];
         let isPlaying = false;
         let nextPlayTime = 0;
+        let currentUserName = 'User';  // Will be loaded from server
 
         // Voiceprint variables
         let voiceprintProfile = null;  // Stored voiceprint features
@@ -1234,7 +1236,51 @@
             }
 
             updateVoiceprintIndicator();
+
+            // Load user info for voiceprint warnings
+            loadUserInfo();
         });
+
+        // Load user information
+        async function loadUserInfo() {
+            try {
+                const response = await fetch('/auth/user/info');
+                if (response.ok) {
+                    const user = await response.json();
+                    currentUserName = user.name || 'User';
+                    console.log(`User name loaded: ${currentUserName}`);
+                }
+            } catch (e) {
+                console.error('Failed to load user info:', e);
+            }
+        }
+
+        // Trigger AI warning when voiceprint verification fails
+        function triggerVoiceprintWarning() {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                return;
+            }
+
+            console.log('Triggering voiceprint warning to AI');
+
+            // Send a system message to AI
+            ws.send(JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                    type: 'message',
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'input_text',
+                            text: `[System: Unrecognized voice detected. Please say: "Sorry, this doesn't seem to be ${currentUserName}'s voice. Please wait a moment."]`
+                        }
+                    ]
+                }
+            }));
+
+            // Trigger AI response
+            ws.send(JSON.stringify({ type: 'response.create' }));
+        }
 
         // ========================================
         // END VOICEPRINT FUNCTIONS
@@ -1389,16 +1435,23 @@
 
                         let lastVerificationTime = 0;
                         let voiceprintVerified = !CONFIG.enableVoiceprint;  // Auto-pass if disabled
+                        let voiceprintCooldownUntil = 0;  // Timestamp until which audio is blocked
 
                         processor.onaudioprocess = (e) => {
                             if (ws && ws.readyState === WebSocket.OPEN) {
                                 const inputData = e.inputBuffer.getChannelData(0);
 
+                                // Check if we're in cooldown period
+                                const now = Date.now();
+                                if (now < voiceprintCooldownUntil) {
+                                    // Still in cooldown - don't send audio
+                                    return;
+                                }
+
                                 // Add to realtime buffer for voiceprint verification
                                 realtimeAudioBuffer.push(...Array.from(inputData));
 
                                 // Periodic voiceprint verification
-                                const now = Date.now();
                                 if (CONFIG.enableVoiceprint && (now - lastVerificationTime) >= VERIFICATION_INTERVAL) {
                                     lastVerificationTime = now;
 
@@ -1408,9 +1461,17 @@
                                         voiceprintVerified = verifyVoiceprint(bufferToVerify);
 
                                         if (!voiceprintVerified) {
-                                            console.warn('Voice verification failed - audio not sent');
+                                            console.warn('Voice verification failed - entering cooldown period');
+
+                                            // Set cooldown period
+                                            voiceprintCooldownUntil = now + CONFIG.voiceprintCooldownPeriod;
+
                                             // Clear buffer to prevent sending unverified audio
                                             realtimeAudioBuffer = [];
+
+                                            // Trigger AI response
+                                            triggerVoiceprintWarning();
+
                                             return;
                                         }
                                     }
