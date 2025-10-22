@@ -688,11 +688,22 @@
         let enrollmentAnalyser = null;
         let realtimeAudioBuffer = [];  // Buffer for realtime voice verification
         const BUFFER_SIZE = 4096;
-        const VERIFICATION_INTERVAL = 1000;  // Check every 1 second
+        const VERIFICATION_INTERVAL = 2000;  // Check every 2 seconds (reduced frequency)
+        const AUDIO_ENERGY_THRESHOLD = 0.01;  // Minimum energy to trigger verification (skip silence)
+        const MAX_CONSECUTIVE_FAILURES = 2;  // Number of consecutive failures before cooldown
 
         // ========================================
         // VOICEPRINT FUNCTIONS
         // ========================================
+
+        // Calculate audio energy (RMS)
+        function calculateAudioEnergy(audioData) {
+            let sum = 0;
+            for (let i = 0; i < audioData.length; i++) {
+                sum += audioData[i] * audioData[i];
+            }
+            return Math.sqrt(sum / audioData.length);
+        }
 
         // Extract audio features (simplified MFCC-like features using FFT)
         function extractAudioFeatures(audioData) {
@@ -1436,6 +1447,7 @@
                         let lastVerificationTime = 0;
                         let voiceprintVerified = !CONFIG.enableVoiceprint;  // Auto-pass if disabled
                         let voiceprintCooldownUntil = 0;  // Timestamp until which audio is blocked
+                        let consecutiveFailures = 0;  // Count consecutive verification failures
 
                         processor.onaudioprocess = (e) => {
                             if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1456,23 +1468,47 @@
                                     lastVerificationTime = now;
 
                                     if (realtimeAudioBuffer.length >= BUFFER_SIZE) {
-                                        // Verify voiceprint
                                         const bufferToVerify = realtimeAudioBuffer.slice(-BUFFER_SIZE);
+
+                                        // Calculate energy - skip verification on silence
+                                        const energy = calculateAudioEnergy(bufferToVerify);
+                                        if (energy < AUDIO_ENERGY_THRESHOLD) {
+                                            console.log('Skipping verification - silence detected (energy:', energy.toFixed(4), ')');
+                                            // Don't count as failure, just skip
+                                            return;
+                                        }
+
+                                        // Verify voiceprint
                                         voiceprintVerified = verifyVoiceprint(bufferToVerify);
 
                                         if (!voiceprintVerified) {
-                                            console.warn('Voice verification failed - entering cooldown period');
+                                            consecutiveFailures++;
+                                            console.warn(`Voice verification failed (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES})`);
 
-                                            // Set cooldown period
-                                            voiceprintCooldownUntil = now + CONFIG.voiceprintCooldownPeriod;
+                                            // Only trigger cooldown after consecutive failures
+                                            if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+                                                console.warn('Consecutive failures threshold reached - entering cooldown period');
 
-                                            // Clear buffer to prevent sending unverified audio
-                                            realtimeAudioBuffer = [];
+                                                // Set cooldown period
+                                                voiceprintCooldownUntil = now + CONFIG.voiceprintCooldownPeriod;
 
-                                            // Trigger AI response
-                                            triggerVoiceprintWarning();
+                                                // Clear buffer to prevent sending unverified audio
+                                                realtimeAudioBuffer = [];
 
-                                            return;
+                                                // Trigger AI response
+                                                triggerVoiceprintWarning();
+
+                                                // Reset counter
+                                                consecutiveFailures = 0;
+
+                                                return;
+                                            }
+                                        } else {
+                                            // Reset counter on success
+                                            if (consecutiveFailures > 0) {
+                                                console.log('Voice verification passed - resetting failure counter');
+                                                consecutiveFailures = 0;
+                                            }
                                         }
                                     }
                                 }
