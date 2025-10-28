@@ -4,14 +4,19 @@ OpenAI Realtime API WebSocket Server
 多用户认证,数据库存储
 """
 
-from flask import Flask, send_from_directory, jsonify, session, redirect, url_for
+from flask import Flask, send_from_directory, jsonify, session, redirect, url_for, request
 from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 import logging
+from datetime import datetime
+from typing import Dict
 
 # 加载环境变量
 load_dotenv()
+
+# 获取 OpenAI API Key
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 
 # 配置日志
 logging.basicConfig(
