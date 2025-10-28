@@ -2,12 +2,17 @@
 """
 本地开发环境快速配置脚本
 自动生成必要的密钥和配置
+
+使用方法:
+  python setup_local_dev.py           # 交互模式
+  python setup_local_dev.py --yes     # 自动模式（所有提示自动确认）
+  python setup_local_dev.py -y        # 同上
 """
 import os
 from cryptography.fernet import Fernet
 import secrets
 
-def generate_keys():
+def generate_keys(auto_yes=False):
     """生成所有必要的密钥"""
     print("\n" + "=" * 70)
     print("VerifAIble 本地开发环境配置")
@@ -27,9 +32,20 @@ def generate_keys():
     env_path = '.env'
     if os.path.exists(env_path):
         print(f"\n⚠️  .env 文件已存在")
-        choice = input("是否备份并更新？(y/n): ").lower()
+        if auto_yes:
+            choice = 'y'
+            print("自动模式：将备份并更新")
+        else:
+            try:
+                choice = input("是否备份并更新？(y/n): ").lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\n检测到非交互模式，自动备份并更新")
+                choice = 'y'
+
         if choice != 'y':
             print("\n已取消。请手动复制上述密钥到 .env 文件。")
+            print("\n你也可以使用 --yes 参数自动确认所有操作:")
+            print("  python setup_local_dev.py --yes")
             return
 
         # 备份现有文件
@@ -144,7 +160,7 @@ def check_dependencies():
         return True
 
 
-def setup_database():
+def setup_database(auto_yes=False):
     """初始化数据库"""
     print("\n" + "=" * 70)
     print("数据库设置")
@@ -154,7 +170,16 @@ def setup_database():
 
     if os.path.exists(db_path):
         print(f"⚠️  数据库已存在: {db_path}")
-        choice = input("是否重新创建？(y/n): ").lower()
+        if auto_yes:
+            choice = 'y'
+            print("自动模式：将重新创建数据库")
+        else:
+            try:
+                choice = input("是否重新创建？(y/n): ").lower()
+            except (EOFError, KeyboardInterrupt):
+                print("\n检测到非交互模式，跳过数据库初始化")
+                return
+
         if choice != 'y':
             print("跳过数据库初始化")
             return
@@ -234,12 +259,20 @@ def show_next_steps():
 
 def main():
     """主函数"""
+    import sys
+
+    # 检查命令行参数
+    auto_yes = '--yes' in sys.argv or '-y' in sys.argv
+
     print("\n" + "=" * 70)
     print("🚀 VerifAIble 本地开发环境配置向导")
     print("=" * 70)
 
+    if auto_yes:
+        print("✅ 自动模式已启用（--yes）")
+
     # 1. 生成密钥
-    generate_keys()
+    generate_keys(auto_yes)
 
     # 2. 检查依赖
     deps_ok = check_dependencies()
@@ -248,10 +281,16 @@ def main():
     playwright_ok = check_playwright()
 
     # 4. 设置数据库
-    print()
-    choice = input("\n是否初始化数据库？(y/n): ").lower()
-    if choice == 'y':
-        setup_database()
+    if auto_yes:
+        setup_database(auto_yes)
+    else:
+        print()
+        try:
+            choice = input("\n是否初始化数据库？(y/n): ").lower()
+            if choice == 'y':
+                setup_database(auto_yes)
+        except (EOFError, KeyboardInterrupt):
+            print("\n检测到非交互模式，跳过数据库初始化")
 
     # 5. 显示后续步骤
     show_next_steps()
