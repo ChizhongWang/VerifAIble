@@ -25,8 +25,12 @@ class User(db.Model):
     voiceprint_enabled = db.Column(db.Boolean, default=False)  # 是否启用声纹验证
     voiceprint_enrolled_at = db.Column(db.DateTime)  # 声纹注册时间
 
+    # 通知邮箱（支持多个）
+    notification_emails = db.Column(db.Text)  # JSON数组格式，如["user@example.com", "backup@example.com"]
+
     # 关系
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    tasks = db.relationship('Task', backref='user', lazy='dynamic', cascade='all, delete-orphan')
 
     def to_dict(self):
         return {
@@ -107,4 +111,56 @@ class ToolCall(db.Model):
             'arguments': self.arguments,
             'result': self.result,
             'timestamp': self.timestamp.isoformat()
+        }
+
+
+class Task(db.Model):
+    """深度搜索任务表"""
+    __tablename__ = 'tasks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+
+    # 任务基本信息
+    query = db.Column(db.Text, nullable=False)  # 用户原始问题
+    target_url = db.Column(db.String(500))  # 意图识别返回的目标URL
+    status = db.Column(db.String(20), default='pending', index=True)  # pending/processing/completed/failed
+
+    # 任务结果
+    summary = db.Column(db.Text)  # AI生成的摘要答案
+    source_url = db.Column(db.String(500))  # 最终信息源URL（可能与target_url不同）
+    citations = db.Column(db.Text)  # JSON数组，需要高亮的文本片段
+    report_html_path = db.Column(db.String(500))  # 高亮后HTML文件的存储路径
+
+    # 操作记录
+    steps = db.Column(db.Text)  # JSON数组，每一步的操作和截图路径
+    step_count = db.Column(db.Integer, default=0)  # 执行了多少步
+    downloaded_files = db.Column(db.Text)  # JSON数组，下载的文件路径列表
+
+    # 元数据
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    started_at = db.Column(db.DateTime)  # 任务开始执行时间
+    completed_at = db.Column(db.DateTime)  # 任务完成时间
+    error_message = db.Column(db.Text)  # 如果失败，记录错误信息
+
+    # 通知和汇报
+    is_read = db.Column(db.Boolean, default=False)  # 用户是否已"接听"
+    briefing_prompt = db.Column(db.Text)  # 语音汇报时注入的提示词
+    email_sent = db.Column(db.Boolean, default=False)  # 是否已发送邮件通知
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'query': self.query,
+            'target_url': self.target_url,
+            'status': self.status,
+            'summary': self.summary,
+            'source_url': self.source_url,
+            'step_count': self.step_count,
+            'created_at': self.created_at.isoformat(),
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
+            'is_read': self.is_read,
+            'email_sent': self.email_sent,
+            'error_message': self.error_message
         }

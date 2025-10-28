@@ -1,35 +1,32 @@
 """
-数据库初始化脚本
+初始化数据库 - 创建所有表
 """
 import os
 from dotenv import load_dotenv
+from flask import Flask
 
+# 加载环境变量
 load_dotenv()
 
-from websocket_server import app
+# 创建Flask应用
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///uniagent.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# 导入db实例并初始化
 from models import db
+db.init_app(app)
 
-def init_database():
-    """初始化数据库"""
-    with app.app_context():
-        # 创建所有表
-        db.create_all()
-        print("✓ 数据库表已创建")
+# 导入模型（确保所有模型都被注册）
+from models import User, Conversation, Message, ToolCall, Task
 
-        # 显示表信息
-        print("\n创建的数据库表:")
-        print("- users (用户表)")
-        print("- conversations (对话记录表)")
-        print("- messages (消息表)")
-        print("- tool_calls (工具调用表)")
+# 创建所有表
+with app.app_context():
+    db.create_all()
+    print("✅ 数据库初始化成功！已创建所有表。")
 
-        # 显示数据库路径
-        db_uri = app.config['SQLALCHEMY_DATABASE_URI']
-        if db_uri.startswith('sqlite'):
-            db_path = db_uri.replace('sqlite:///', '')
-            print(f"\nSQLite数据库位置: {os.path.abspath(db_path)}")
-        else:
-            print(f"\n数据库URI: {db_uri}")
-
-if __name__ == '__main__':
-    init_database()
+    # 显示创建的表
+    from sqlalchemy import inspect
+    inspector = inspect(db.engine)
+    tables = inspector.get_table_names()
+    print(f"\n已创建的表: {', '.join(tables)}")

@@ -24,6 +24,14 @@ scikit-learn==1.3.2
 # WSGI Server (Production)
 gunicorn==21.2.0
 
-# Database Drivers (Optional - uncomment as needed)
-# psycopg2-binary==2.9.9  # PostgreSQL
-# PyMySQL==1.1.0          # MySQL
+# Browser Automation & Web Scraping
+playwright==1.41.0
+beautifulsoup4==4.12.3
+lxml==5.1.0
+
+# OpenAI (for GPT-5-mini vision)
+openai==1.10.0
+
+# Database Drivers
+psycopg2-binary==2.9.9  # PostgreSQL
+PyMuPDF
